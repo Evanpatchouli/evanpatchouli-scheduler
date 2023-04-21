@@ -79,7 +79,7 @@ Or
 const job = new Job("HelloJob", "* * * * * *", ()=>{
     console.log("Hello, there is Scheduler");
 })
-scheduler.start("HelloJob");
+scheduler.start(job);
 ```
 Both name and Job are allowed.
 
