@@ -145,14 +145,14 @@ Or
 ```js
 scheduler.rescheduleJob({job: "HelloJob", rule: "* * * * * *"});
 ```
-When you both give job<Job> and rule ({job,rule} or (job,rule)), if rule is null or undefind, Scheduler will use job.rule to reschedule it.
+When you both give job<Job> and rule ( rescheduleJob({job,rule}) or rescheduleJob(job,rule) ), if rule is null or undefind, Scheduler will use job.rule to reschedule it.
 ### rescheduleJobs
+
+(Unaccomplished) A method to reschedule a series of jobs schedule.
 
 ## JobHelper
 
 Every job added into pool, Scheduler will auto rigister an one-to-one Job named `${job.name}-helper` to help manage this job, release cache regularly...
-
-A method to reschedule a series of jobs schedule.
 ## Starter
 
 ```js

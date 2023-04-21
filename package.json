@@ -1,6 +1,6 @@
 {
   "name": "@evanpatchouli/scheduler",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A package help to manage the transcations scheduled in node.js",
   "main": "index.js",
   "dependencies": {
