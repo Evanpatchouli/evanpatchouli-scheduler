@@ -141,7 +141,6 @@ Or
 const job = new Job("HelloJob", "* * * * * *", ()=>{})
 scheduler.rescheduleJob({job: job, rule: "*\5 * * * * *"});
 ```
-```
 Or
 ```js
 scheduler.rescheduleJob({job: "HelloJob", rule: "* * * * * *"});
