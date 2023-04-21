@@ -1,0 +1,37 @@
+{
+  "name": "@evanpatchouli/scheduler",
+  "version": "1.0.0",
+  "description": "A package help to manage the transcations scheduled in node.js",
+  "main": "index.js",
+  "dependencies": {
+    "js-text-chart": "^1.0.1",
+    "node-schedule": "^2.1.1"
+  },
+  "devDependencies": {
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "serve": "node ./test/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Evanpatchouli/evanpatchouli-scheduler.git"
+  },
+  "homepage": "https://github.com/Evanpatchouli/evanpatchouli-scheduler#readme",
+  "bugs": {
+    "url": "https://github.com/Evanpatchouli/evanpatchouli-scheduler/issues",
+    "email": "3125019716@qq.com"
+  },
+  "keywords": [
+    "node.js",
+    "schedule",
+    "transcation"
+  ],
+  "author": "evanpatchouli",
+  "license": "MIT"
+}
