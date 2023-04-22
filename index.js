@@ -1,12 +1,12 @@
 const { RecurrenceRule } = require("node-schedule");
-const Job = require("./lib/job");
-const JobHelper = require("./lib/jobHelper");
+const Task = require("./lib/task");
+const TaskHelper = require("./lib/taskHelper");
 const Scheduler = require("./lib/scheduler");
 const Starter = require("./lib/starter");
 
 module.exports = {
-    Job,
-    JobHelper,
+    Task,
+    TaskHelper,
     Scheduler,
     Starter,
     RecurrenceRule

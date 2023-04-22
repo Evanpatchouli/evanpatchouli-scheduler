@@ -1,5 +1,6 @@
 # @evanpatchouli/scheduler
- A package help to manage the transcations scheduled in node.js
+A package help to manage the transcations scheduled in node.js.  
+This frame is based on **node-schedule**,which thanks for the grate work the team of.
 
 ## Install
 
@@ -7,24 +8,31 @@
 npm install @evanpatchouli/scheduler
 ```
 
-## Job
+## Latest Version
+
+**v1.1.0**: 
+- Since this version, the class **Job** and **JobHelper** have been refactored to **Task** and **TaskHelper**.
+- Besides, there is a new mechanism with a new class **Plan**, where you can put several related Tasks into it. Altought it is in development so it is of useless at this version, but it will works at next version.
+- Fix 1 bug in JobHelper(now named TaskHelper).
+
+## Task
 
 ```js
-const { Job } = require("@evanpatchouli/scheduler");
+const { Task } = require("@evanpatchouli/scheduler");
 ```
 
-### create a Job
+### create a Task
 
-By Job constructor, you should give 3 params:
-- name : Job name
-- rule : the rule which Job is scheduled by, and it's same as the rule in "node-schedule"
-- todo : the things Job going to do
+By Task constructor, you should give 3 params:
+- name : Task name
+- rule : the rule which Task is scheduled by, and it's same as the rule in "node-schedule"
+- todo : the things Task going to do
 ```js
-const job = new Job("HelloJob", "* * * * * *", ()=>{
+const task = new Task("HelloTask", "* * * * * *", ()=>{
     console.log("Hello, there is Scheduler");
 })
 ```
-Although Job has many other methods, please do not use them directly by Job. You should use **Scheduler** to manage your jobs unless you want to manage jobs yourself without Scheduler.
+Although Task has many other methods, please do not use them directly by Task. You should use **Scheduler** to manage your tasks unless you want to manage tasks yourself without Scheduler.
 
 ## Scheduler
 
@@ -32,127 +40,127 @@ Although Job has many other methods, please do not use them directly by Job. You
 const { Scheduler } = require("@evanpatchouli/scheduler");
 ```
 
-The manager, a singleton, for you to manage your jobs like add, start, stop, restart, remove...
+The manager, a singleton, for you to manage your tasks like add, start, stop, restart, remove...
 
 ### getInstance
 ```js
 let scheduler = Scheduler.getInstance();
 ```
 
-### addJob
+### addTask
 
-Add a new job into job pool, the name of job **must be unique and does not ends with "-helper"**
+Add a new task into task pool, the name of task **must be unique and does not ends with "-helper"**
 ```js
-const job = new Job("HelloJob", "* * * * * *", ()=>{
+const task = new Task("HelloTask", "* * * * * *", ()=>{
     console.log("Hello, there is Scheduler");
 })
-scheduler.addJob(job);
+scheduler.addTask(task);
 ```
-It is just be add into job pool without being started. If you want to start the job as soon as it is added, do like this:
+It is just be add into task pool without being started. If you want to start the task as soon as it is added, do like this:
 ```js
-scheduler.addJob(job, true);
+scheduler.addTask(task, true);
 ```
 
-### addJobs
+### addTasks
 
-You can use **addJobs** to add a series of Jobs into job pool
+You can use **addTasks** to add a series of Tasks into task pool
 ```js
-const job1 = new Job("HelloJob1", "* * * * * *", ()=>{
+const task1 = new Task("HelloTask1", "* * * * * *", ()=>{
     console.log("Hello, there is Scheduler");
 })
-const job2 = new Job("HelloJob2", "* * * * * *", ()=>{
+const task2 = new Task("HelloTask2", "* * * * * *", ()=>{
     console.log("Hello, there is Scheduler");
 })
-scheduler.addJobs([job1,job2]);
+scheduler.addTasks([task1,task2]);
 ```
 You can also give the second param as true to make all of them to start at once.  
-In future, this method may support to appoint every job whether to start or not.
+In future, this method may support to appoint every task whether to start or not.
 
-### startJob
+### startTask
 
-If a job is not running(hasn't been started or has been stoped), use startJob can start it at once.
+If a task is not running(hasn't been started or has been stoped), use startTask can start it at once.
 ```js
-scheduler.start("HelloJob");
+scheduler.start("HelloTask");
 ```
 Or
 ```js
-const job = new Job("HelloJob", "* * * * * *", ()=>{
+const task = new Task("HelloTask", "* * * * * *", ()=>{
     console.log("Hello, there is Scheduler");
 })
-scheduler.start(job);
+scheduler.start(task);
 ```
-Both name and Job are allowed.
+Both name and Task are allowed.
 
-### startJobs
+### startTasks
 
-A method to start a series of jobs at once, and both Array of name and Job are allowed.
+A method to start a series of tasks at once, and both Array of name and Task are allowed.
 
 ### startAll
 
-A method to start all jobs in job pool.
+A method to start all tasks in task pool.
 
-### stopJob
+### stopTask
 
-A method to stop a job schedule, and its usage is similar to addJob.
+A method to stop a task schedule, and its usage is similar to addTask.
 
-### stopJobs
+### stopTasks
 
-A method to stop a series of jobs schedule, and its usage is similar to addJobs.
+A method to stop a series of tasks schedule, and its usage is similar to addTasks.
 
 ### stopAll
 
-A method to stop all jobs in job pool.
+A method to stop all tasks in task pool.
 
-### removeJob
+### removeTask
 
-A method to remove a job from pool, and its usage is similar to addJob. If the job is alive, it will be canceld first by Scheduler and then be removed.
+A method to remove a task from pool, and its usage is similar to addTask. If the task is alive, it will be canceld first by Scheduler and then be removed.
 
-### removeJobs
+### removeTasks
 
-A method to remove a series of jobs, and its usage is similar to addJobs.
+A method to remove a series of tasks, and its usage is similar to addTasks.
 
-### restartJob
+### restartTask
 
-A method to restart a job, and its usage is similar to addJob.
+A method to restart a task, and its usage is similar to addTask.
 
-### restartJobs
+### restartTasks
 
-A method to restart a series of jobs schedule, and its usage is similar to addJobs.
+A method to restart a series of tasks schedule, and its usage is similar to addTasks.
 
-### rescheduleJob
+### rescheduleTask
 
-A method to reschedule a job(Only reset rule, will not reset todo).  
+A method to reschedule a task(Only reset rule, will not reset todo).  
 You can use it like:
 ```js
-scheduler.rescheduleJob("HelloJob","*\5 * * * * *");
+scheduler.rescheduleTask("HelloTask","*\5 * * * * *");
 ```
 Or
 ```js
-const job = new Job("HelloJob", "*\5 * * * * *", ()=>{})
-scheduler.rescheduleJob(job);
+const task = new Task("HelloTask", "*\5 * * * * *", ()=>{})
+scheduler.rescheduleTask(task);
 ```
 Or
 ```js
-const job = new Job("HelloJob", "*\5 * * * * *", ()=>{})
-scheduler.rescheduleJob({job: job});
+const task = new Task("HelloTask", "*\5 * * * * *", ()=>{})
+scheduler.rescheduleTask({task: task});
 ```
 Or
 ```js
-const job = new Job("HelloJob", "* * * * * *", ()=>{})
-scheduler.rescheduleJob({job: job, rule: "*\5 * * * * *"});
+const task = new Task("HelloTask", "* * * * * *", ()=>{})
+scheduler.rescheduleTask({task: task, rule: "*\5 * * * * *"});
 ```
 Or
 ```js
-scheduler.rescheduleJob({job: "HelloJob", rule: "* * * * * *"});
+scheduler.rescheduleTask({task: "HelloTask", rule: "* * * * * *"});
 ```
-When you both give job<Job> and rule ( rescheduleJob({job,rule}) or rescheduleJob(job,rule) ), if rule is null or undefind, Scheduler will use job.rule to reschedule it.
-### rescheduleJobs
+When you both give task<Task> and rule ( rescheduleTask({task,rule}) or rescheduleTask(task,rule) ), if rule is null or undefind, Scheduler will use task.rule to reschedule it.
+### rescheduleTasks
 
-(Unaccomplished) A method to reschedule a series of jobs schedule.
+(Unaccomplished) A method to reschedule a series of tasks schedule.
 
-## JobHelper
+## TaskHelper
 
-Every job added into pool, Scheduler will auto rigister an one-to-one Job named `${job.name}-helper` to help manage this job, release cache regularly...
+Every task added into pool, Scheduler will auto rigister an one-to-one Task named `${task.name}-helper` to help manage this task, release cache regularly...
 ## Starter
 
 ```js
@@ -163,8 +171,8 @@ A module provides packaged functions to init and start Scheduler and it can prin
 
 ```js
 let scheduler = Scheduler.getInstance();
-const jobtest = new Job("jobtest","* * * * * *",()=>{console.log("Go!")});
-scheduler.addJob(jobtest);
+const tasktest = new Task("tasktest","* * * * * *",()=>{console.log("Go!")});
+scheduler.addTask(tasktest);
 ScheduleStarter.run(true);
 ```
 If you don't want to print Logo, you can give `false` or not give any param.
