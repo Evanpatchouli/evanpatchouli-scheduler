@@ -1,6 +1,6 @@
 const { Scheduler, Starter, Plan, PlanTool } = require('../index');
 const task1 = require('./task1');
-const task2 = require('./task2');
+const task2 = require('./test2');
 
 async function init(){
     let plan = new Plan("plan1",[task1,task2]);

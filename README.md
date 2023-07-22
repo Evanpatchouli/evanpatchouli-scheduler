@@ -1,4 +1,4 @@
-# ★ @evanpatchouli/scheduler ★
+# @evanpatchouli/scheduler
 A package help to manage the transcations scheduled in node.js.  
 This frame is based on **node-schedule**,which thanks for the grate work the team of.
 
@@ -9,6 +9,12 @@ npm install @evanpatchouli/scheduler
 ```
 
 ## Latest Version
+
+**v1.1.3**:
+- Fix 1 bug and improve doc.
+
+**v1.1.2**:
+- Refactored by TypeScript.
 
 **v1.1.1**:
 - **Task.LogOn**: You can deside whether the task need to log.
@@ -21,6 +27,17 @@ npm install @evanpatchouli/scheduler
 - Since this version, the class Job and JobHelper have been refactored to Task and TaskHelper.
 - Besides, there is a new mechanism with a new class Plan, where you can put several related Tasks into it. Altought it is in development so it is of useless at this version, but it will works at next version.
 - Fix 1 bug in JobHelper(now named TaskHelper).
+
+## Documentation
+
+- [Task](#task)
+- [Plan](#plan)
+- [PlanTool](#plantool)
+- [Scheduler](#scheduler)
+- [ScheTool](#schetool)
+- [TaskHelper](#taskhelper)
+- [Starter](#starter)
+- [Warning](#warnning)
 
 ## Task
 
@@ -85,6 +102,12 @@ plan.addTask(task1);
 
 ```js
 plan.addTasks([task1,task2]);
+```
+
+### get a task from a plan
+
+```js
+Plan.getTask("task1");
 ```
 
 ### remove a task from a plan
@@ -254,6 +277,12 @@ scheduler.addTasks([task1,task2]);
 ```
 You can also give the second param as true to make all of them to start at once.  
 In future, this method may support to appoint every task whether to start or not.
+
+### getTask
+
+```js
+scheduler.getTask("task1");
+```
 
 ### startTask
 
