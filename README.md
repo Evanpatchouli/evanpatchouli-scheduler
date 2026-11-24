@@ -10,6 +10,12 @@ npm install @evanpatchouli/scheduler
 
 ## Latest Version
 
+**v2.0.0**
+
+- Register a plan with `PlanTool.addPlan(plan)` to add its members to the scheduler. Constructing a plan now only collects its members.
+- Cache cleanup is shared. If your code looks up a named helper, call `Scheduler.registerHelper(task)` after adding the task and before starting it.
+- Repeated starts keep one schedule. Failed reschedules preserve the previous one. Use `await Scheduler.stopAll()` to wait for active callbacks during shutdown.
+
 **v1.1.3**:
 - Fix 1 bug and improve doc.
 
