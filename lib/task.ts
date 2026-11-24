@@ -12,9 +12,40 @@ export function unpackSchedule(request: RescheduleRequest, rule?: TaskRule | nul
   return { task: request, rule };
 }
 
-class Task {
+function errorMessage(reason: unknown): string {
+  try {
+    return reason instanceof Error ? reason.message : String(reason);
+  } catch {
+    return 'Unprintable rejection reason';
+  }
+}
+
+type HistoryEntry = { name: string; time: string };
+
+export default class Task {
   private hasScheduled = false;
   private readonly executions = new Set<Promise<unknown>>();
+  cacheOn: boolean;
+  logOn: boolean;
+  job: Job;
+  success: (HistoryEntry & { result: any })[] = [];
+  fail: (HistoryEntry & { errMsg: string })[] = [];
+  count: HistoryEntry[] = [];
+
+  constructor(
+    public readonly name: string,
+    public rule: TaskRule,
+    public todo: () => unknown,
+    public options: TaskOption = {}
+  ) {
+    this.logOn = options.logOn ?? true;
+    this.cacheOn = options.cacheOn ?? false;
+    this.job = this.createJob();
+  }
+
+  get alive(): boolean {
+    return this.job.nextInvocation() != null;
+  }
 
   get runningCount() {
     return this.executions.size;
@@ -23,37 +54,14 @@ class Task {
   async waitForIdle(): Promise<void> {
     await Promise.allSettled(this.executions);
   }
-  get alive(): boolean {
-    return this.job.nextInvocation() != null;
-  }
-  public cacheOn: boolean = false;
-  public logOn: boolean = true;
-  public job: Job;
-  public success: {name:string,time:string,result:any}[] = [];
-  public fail: {name:string,time:string,errMsg:string}[] = [];
-  public count: {name:string,time:string}[] = [];
-  /**
-   * 
-   * @param name - The name of the task
-   * @param rule - the rule of the task schedule 
-   * @param todo - the concrete things the task will do
-   * @param options - set logOn and cacheOn
-   */
-  constructor(
-    public name: string,
-    public rule: TaskRule,
-    public todo: Function,
-    public options: TaskOption ={logOn:true,cacheOn:false}
-  ){
-    this.job = this.createJob();
+
+  private entry(): HistoryEntry {
+    return { name: this.name, time: new Date().toLocaleString() };
   }
 
   private createJob() {
     const job = new Job(async () => {
-      if (this.cacheOn) {
-        this.count.push({name: this.name, time: new Date().toLocaleString()});
-      }
-      if (this.logOn) console.log(`[Scheduler][Task:${this.name}]Task is going...`);
+      if (this.cacheOn) this.count.push(this.entry());
       const execution = Promise.resolve().then(() => this.todo());
       this.executions.add(execution);
       try {
@@ -62,21 +70,22 @@ class Task {
         this.executions.delete(execution);
       }
     });
-    this.initEvent(job);
+    job.on('success', result => {
+      if (this.cacheOn) this.success.push({ ...this.entry(), result });
+      if (this.logOn) console.log(`[Scheduler][Task:${this.name}]Completed`, result);
+    });
+    job.on('error', (reason: unknown) => {
+      const errMsg = errorMessage(reason);
+      if (this.cacheOn) this.fail.push({ ...this.entry(), errMsg });
+      if (this.logOn) console.error(`[Scheduler][Task:${this.name}]Failed`, errMsg);
+    });
     return job;
   }
 
-  /**
-   * Start this task schedule
-   */
-  start(){
+  start() {
     if (!this.alive) this.reschedule(this.rule);
   }
 
-  /**
-   * Reschedule this task schedule
-   * @param rule - the rule of the task schedule 
-   */
   reschedule(rule: TaskRule) {
     const candidate = this.hasScheduled ? this.createJob() : this.job;
     try {
@@ -98,78 +107,16 @@ class Task {
     if (previous !== candidate) previous.cancel();
   }
 
-  /**
-   * Restart this task schedule
-   */
-  restart(){
-    this.reschedule(this.rule);
-  }
+  restart() { this.reschedule(this.rule); }
+  stop() { this.job.cancel(); }
 
-  /**
-   * Stop this task schedule
-   */
-  stop(){
-    this.job.cancel();
-  }
-
-  /**
-   * Release the cache
-   */
-  releaseCache(){
+  releaseCache() {
     this.count = [];
     this.success = [];
     this.fail = [];
   }
 
-  /**
-   * Output the task to string text
-   * @returns 
-   */
-  toString(){
-    return `Task{name:${JSON.stringify(this.name)}, rule:${JSON.stringify(this.rule)}, alive:${this.alive}, count:${this.count.length}, success:${this.success.length}, fail:${this.fail.length}}}`;
-  }
-
-  private initEvent(job: Job){
-    const task = this;
-    //1.先执行 scheduled 回调
-    job.on("scheduled",(date: Date)=>{
-        if (task.logOn){
-            console.log(`[Scheduler][Task:${task.name}]Task is scheduled for ${date.toISOString()}`);
-        }
-        //scheduled的回调函数中出的错不会被监听error所捕获
-    });
-    //3.再执行 run 回调
-    job.on("run",()=>{
-        if (task.logOn){
-            console.log(`[Scheduler][Task:${task.name}]Task has finished`);
-        }
-    });
-    //4.再执行 success 回调
-    job.on("success",(data)=>{
-        if (task.cacheOn){
-            task.success.push({name: task.name, time: new Date().toLocaleString(), result: data});
-        }
-        
-        if (task.logOn){
-            console.log(`[Scheduler][Task:${task.name}]Result: ${data}`);
-            console.log(`[Scheduler][Task:${task.name}]Done successfully`);
-            console.log(`[Scheduler][Task:${task.name}]${task.toString()}`,"\n");  
-        }
-        
-    });
-    //5.只监听任务创建回调,run回调和success回调中产生的异常
-    job.on("error",(err)=>{
-        if (task.cacheOn){
-            task.fail.push({name: task.name, time: new Date().toLocaleString(), errMsg: err.message });
-        }
-        console.log(`[ERROR][Task:${task.name}][${new Date().toLocaleString()}]${err.message}`);
-        console.log(`[Scheduler][Task:${task.name}]${task.toString()}`,"\n");
-    });
-    //6.计划被取消的那一刻执行 canceled
-    job.on("canceled",()=>{
-        console.log(`[Scheduler][Task:${task.name}]Schedule has been canceld`);
-    });
+  toString() {
+    return `Task{name:${JSON.stringify(this.name)}, rule:${JSON.stringify(this.rule)}, alive:${this.alive}, count:${this.count.length}, success:${this.success.length}, fail:${this.fail.length}}`;
   }
 }
-
-export default Task;

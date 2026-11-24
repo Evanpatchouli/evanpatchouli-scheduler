@@ -1,4 +1,4 @@
-export declare type TaskOption = {
-  logOn: boolean;
-  cacheOn: boolean;
-}
+export type TaskOption = {
+  logOn?: boolean;
+  cacheOn?: boolean;
+};
