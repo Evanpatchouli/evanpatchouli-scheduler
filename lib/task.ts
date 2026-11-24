@@ -1,8 +1,9 @@
-import { Job, scheduleJob } from 'node-schedule';
+import { Job, RecurrenceRule, RecurrenceSpecDateRange, RecurrenceSpecObjLit } from 'node-schedule';
 import { TaskOption } from './task.option';
 import { forgetCache, scheduleCacheRelease } from './task.cache';
 
-export type TaskRule = Parameters<typeof scheduleJob>[0];
+type DirectRule = string | number | Date | RecurrenceRule | RecurrenceSpecObjLit;
+export type TaskRule = DirectRule | (Omit<RecurrenceSpecDateRange, 'rule'> & { rule: DirectRule });
 export type TaskRef = string | Task;
 export type RescheduleRequest = TaskRef | { task: TaskRef; rule?: TaskRule | null };
 
@@ -23,6 +24,23 @@ function errorMessage(reason: unknown): string {
 
 type HistoryEntry = { name: string; time: string };
 const skipped = Symbol('skipped execution');
+
+function validValue(value: DirectRule): boolean {
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (value instanceof Date) return Number.isFinite(value.getTime());
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validSchedule(rule: TaskRule): boolean {
+  if (rule === null || typeof rule !== 'object' || !('rule' in rule)) return validValue(rule);
+  if (!validValue(rule.rule)) return false;
+  const bound = (value: string | number | Date) => value instanceof Date ? value.getTime() : new Date(value).getTime();
+  const start = rule.start === undefined ? -Infinity : bound(rule.start);
+  const end = rule.end === undefined ? Infinity : bound(rule.end);
+  // An invalid date yields NaN, which also fails this comparison.
+  return start <= end;
+}
 
 export default class Task {
   private hasScheduled = false;
@@ -113,11 +131,8 @@ export default class Task {
       for (const { task, rule } of changes) {
         const job = task.hasScheduled || changes.length > 1 ? task.createJob() : task.job;
         candidates.push({ task, rule, job });
-        const invalid = rule == null || (typeof rule === 'string' && !rule.trim()) ||
-          (rule instanceof Date && !Number.isFinite(rule.getTime())) ||
-          (typeof rule === 'number' && !Number.isFinite(rule));
         // @types/node-schedule narrows Job.schedule compared with scheduleJob.
-        if (invalid || !job.schedule(rule as Date | string | number)) {
+        if (!validSchedule(rule) || !job.schedule(rule as Date | string | number)) {
           throw new Error(`[Scheduler]Cannot schedule task "${task.name}"`);
         }
       }

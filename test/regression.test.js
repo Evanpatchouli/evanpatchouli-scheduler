@@ -1,6 +1,7 @@
 const { test, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { Scheduler, Task } = require('..');
+require('./regression/rule-windows');
 require('./regression/helper-members');
 require('./regression/batch-schedules');
 require('./regression/public-api');

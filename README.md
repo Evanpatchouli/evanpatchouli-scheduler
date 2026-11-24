@@ -325,6 +325,8 @@ A method to restart a series of tasks schedule, and its usage is similar to addT
 
 Replace the rule of a registered task. These calls accept the name, the Task instance, or an object containing either. Omitting the rule reuses the current one. If a replacement cannot be scheduled, the call throws and the previous schedule remains active.
 
+A bounded schedule accepts a rule with optional `start`, `end` and `tz`. Supply valid dates in chronological order, for example `{ rule: "0 9 * * *", tz: "Asia/Shanghai", end: new Date("2035-12-31") }`.
+
 ```js
 scheduler.rescheduleTask("HelloTask", "*/5 * * * * *");
 scheduler.rescheduleTask(task);
