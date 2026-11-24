@@ -19,7 +19,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "npm run tsc:build && node --test test/regression.test.js",
+    "test": "npm run tsc:build && node --test test/regression.test.js && npm run test:types",
+    "test:types": "tsc -p test/consumer",
     "serve": "node ./test/server.js",
     "tsc:build": "tsc --outDir dist"
   },

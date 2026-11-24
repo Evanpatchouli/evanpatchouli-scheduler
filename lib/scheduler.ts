@@ -16,6 +16,14 @@ export class Scheduler {
     return Scheduler.instance;
   }
 
+  getInstance() {
+    return this;
+  }
+
+  start(ref: TaskRef) {
+    this.startTask(ref);
+  }
+
   printAll() {
     for (const name of this.task_pool.keys()) console.log(`[Scheduler]Task: ${name}`);
   }
