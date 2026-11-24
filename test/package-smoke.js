@@ -31,7 +31,9 @@ try {
   const fromConsumer = createRequire(path.join(consumer, 'index.js'));
   const packageRoot = path.join(consumer, 'node_modules', '@evanpatchouli', 'scheduler');
   assert.equal(fromConsumer.resolve('@evanpatchouli/scheduler'), path.join(packageRoot, 'dist', 'index.js'));
-  const { Task, Scheduler } = fromConsumer('@evanpatchouli/scheduler');
+  const { Task, Scheduler, RedisScheduler } = fromConsumer('@evanpatchouli/scheduler');
+  assert.equal(typeof RedisScheduler.open, 'function');
+  assert.equal(fs.existsSync(path.join(consumer, 'node_modules', 'redis')), false);
   const task = new Task('smoke', '* * * * * *', () => {});
   Scheduler.addTask(task);
   assert.equal(Scheduler.getTask('smoke'), task);

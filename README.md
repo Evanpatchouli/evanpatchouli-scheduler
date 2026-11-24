@@ -40,6 +40,7 @@ npm install @evanpatchouli/scheduler
 - [Plan](#plan)
 - [PlanTool](#plantool)
 - [Scheduler](#scheduler)
+- [Optional Redis scheduling](#optional-redis-scheduling)
 - [ScheTool](#schetool)
 - [TaskHelper](#taskhelper)
 - [Starter](#starter)
@@ -339,6 +340,52 @@ scheduler.rescheduleTask(task);
 scheduler.rescheduleTask({ task, rule: "*/5 * * * * *" });
 scheduler.rescheduleTask({ task: "HelloTask", rule: new Date(Date.now() + 5000) });
 ```
+
+## Optional Redis scheduling
+
+`Scheduler` runs in memory by default. To keep task definitions and their enabled state across application restarts, install a Redis client in your application (`npm install redis@4` for this example). Pass an already connected client to `RedisScheduler.open()`.
+
+```js
+const { Scheduler, Task, RedisScheduler } = require("@evanpatchouli/scheduler");
+
+// Call once during application startup. Save and await the returned shutdown function on exit.
+async function startReports(sendReport) {
+    const name = "weekly-report";
+    const rule = "0 9 * * 1";
+    const url = process.env.SCHEDULER_REDIS_URL;
+    if (!url) {
+        Scheduler.addTask(new Task(name, rule, sendReport), true);
+        return () => Scheduler.stopAll();
+    }
+
+    const { createClient } = require("redis");
+    const client = createClient({ url, disableOfflineQueue: true });
+    client.on("error", error => console.error("Redis connection", error));
+    await client.connect();
+    let db;
+    try {
+        db = await RedisScheduler.open({
+            client, namespace: "reports", handlers: { sendReport },
+            onError: error => console.error("Redis scheduling suspended", error)
+        });
+        // open() already restored saved tasks, including tasks an operator paused.
+        if (!db.getTask(name)) {
+            await db.addTask({ name, handler: "sendReport", rule }, true);
+        }
+    } catch (error) {
+        try { if (db) await db.close(); } finally { await client.quit(); }
+        throw error;
+    }
+    return async () => {
+        try { await db.close(); } finally { await client.quit(); }
+    };
+}
+```
+
+- **Task management.** Await `addTask(definition, start = false)`, `startTask(name)`, `stopTask(name)`, `rescheduleTask(name, rule)` and `removeTask(name)`. Rescheduling enables the task. Mutations are serialized per instance and acknowledged by Redis. Use `getTask(name)` or `listTasks()` for local snapshots. `enabled` is the saved setting and `scheduled` indicates a future local invocation.
+- **Restart and shutdown.** Supply the same namespace and named handlers when reopening. A missing handler or invalid stored record rejects startup. Past occurrences are skipped, including expired one-off dates. `stopTask` persists a pause. `close()` preserves the saved settings, waits for active handlers and releases ownership. Call it from the host shutdown path.
+- **Data in Redis.** Each record contains a version, task name, handler name, schedule, options and enabled flag. Supply handler implementations in application code. Plans managed with `PlanTool` and histories returned by `db.getHistory(name)` live in the process. Configure Redis persistence and backups according to your recovery requirements.
+- **Ownership and failures.** One active scheduler owns a namespace. Opening the same namespace twice rejects the second open. The renewable lease defaults to 30 seconds (`leaseMs`), and each invocation checks ownership and the current definition in Redis before calling the handler. After a process crash a replacement can open the namespace when the lease expires. On ownership loss or uncertain Redis I/O the instance suspends scheduling and reports the error. Close it and reopen against healthy Redis to reload the authoritative records. In-flight business effects require application-level idempotency across crashes or takeovers.
 
 ## ScheTool
 

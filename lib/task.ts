@@ -43,6 +43,8 @@ function validSchedule(rule: TaskRule): boolean {
 }
 
 export default class Task {
+  /** An external scheduler may check ownership before a business invocation starts. */
+  protected admitInvocation?: () => Promise<boolean>;
   private hasScheduled = false;
   private readonly executions = new Set<Promise<unknown>>();
   cacheOn: boolean;
@@ -91,11 +93,17 @@ export default class Task {
     scheduleCacheRelease(this);
   }
 
+  private invokeBusiness() {
+    if (this.cacheOn) this.record(this.count, this.entry());
+    return Promise.resolve().then(() => this.todo());
+  }
+
   private createJob() {
     const job = new Job(async () => {
       if (this.options.overlap === 'skip' && this.runningCount > 0) return skipped;
-      if (this.cacheOn) this.record(this.count, this.entry());
-      const execution = Promise.resolve().then(() => this.todo());
+      const execution = this.admitInvocation
+        ? this.admitInvocation().then(allowed => allowed ? this.invokeBusiness() : skipped)
+        : this.invokeBusiness();
       this.executions.add(execution);
       try {
         return await execution;

@@ -8,5 +8,5 @@
     "baseUrl": "../..",
     "paths": { "@evanpatchouli/scheduler": ["dist"] }
   },
-  "files": ["types.ts"]
+  "files": ["types.ts", "redis-client.ts"]
 }
