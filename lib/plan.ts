@@ -59,7 +59,7 @@ export default class Plan {
     const members = this.members(refs);
     const registered = Scheduler.plan_pool.get(this.name) === this;
     for (const task of members) {
-      this.task_group.delete(task.name);
+      if (!this.task_group.delete(task.name)) continue;
       if (registered && ![...Scheduler.plan_pool.values()].some(plan => plan.getTask(task))) {
         Scheduler.removeTask(task);
       }

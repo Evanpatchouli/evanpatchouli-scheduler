@@ -73,6 +73,7 @@ export class Scheduler {
 
   registerHelper(task: Task) {
     this.requireTask(task);
+    if (task instanceof TaskHelper) throw new Error('[Scheduler]A helper cannot own another helper');
     const name = `${task.name}-helper`;
     if (!this.task_pool.has(name)) this.task_pool.set(name, new TaskHelper(task));
   }
@@ -121,9 +122,9 @@ export class Scheduler {
   removeTask(ref: TaskRef) {
     const task = this.requireTask(ref);
     this.stopTask(task);
-    for (const plan of this.plan_pool.values()) plan.task_group.delete(task.name);
     for (const owned of [task, this.getTask(`${task.name}-helper`)]) {
       if (!owned) continue;
+      for (const plan of this.plan_pool.values()) plan.task_group.delete(owned.name);
       forgetCache(owned);
       this.task_pool.delete(owned.name);
       if (owned.runningCount) {
@@ -156,8 +157,10 @@ export class Scheduler {
   rescheduleTask(request: RescheduleRequest, rule?: TaskRule | null) {
     const args = unpackSchedule(request, rule);
     const task = this.requireTask(args.task);
-    task.reschedule(args.rule ?? task.rule);
-    this.getTask(`${task.name}-helper`)?.start();
+    const changes = [{ task, rule: args.rule ?? task.rule }];
+    const helper = this.getTask(`${task.name}-helper`);
+    if (helper && !helper.alive) changes.push({ task: helper, rule: helper.rule });
+    Task.scheduleTogether(changes);
   }
 }
 
