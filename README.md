@@ -10,6 +10,10 @@ npm install @evanpatchouli/scheduler
 
 ## Latest Version
 
+**v2.1.0**
+
+- Opt into Redis to restore task definitions and their enabled or paused state after a process restart. Each namespace has one active scheduler. See [optional Redis scheduling](#optional-redis-scheduling).
+
 **v2.0.0**
 
 - Register a plan with `PlanTool.addPlan(plan)` to add its members to the scheduler. Constructing a plan now only collects its members.
