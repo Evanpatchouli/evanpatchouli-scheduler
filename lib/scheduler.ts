@@ -1,8 +1,6 @@
 import Plan from './plan';
-import Task, { RescheduleRequest, TaskRef, TaskRule } from './task';
+import Task, { RescheduleRequest, TaskRef, TaskRule, unpackSchedule } from './task';
 import TaskHelper from './task.helper';
-import PlanTool from './plan.tool';
-import ScheTool from './sche.tool';
 
 export class Scheduler {
   private static readonly instance = new Scheduler();
@@ -116,6 +114,7 @@ export class Scheduler {
   removeTask(ref: TaskRef) {
     const task = this.requireTask(ref);
     this.stopTask(task);
+    for (const plan of this.plan_pool.values()) plan.task_group.delete(task.name);
     for (const owned of [task, this.getTask(`${task.name}-helper`)]) {
       if (!owned) continue;
       this.task_pool.delete(owned.name);
@@ -134,8 +133,8 @@ export class Scheduler {
   }
 
   dumpTasks() {
-    PlanTool.dumpPlans();
-    ScheTool.dumpTaskPool();
+    this.removeTasks([...this.task_pool.values()]);
+    this.plan_pool.clear();
   }
 
   restartTask(ref: TaskRef) {
@@ -149,9 +148,9 @@ export class Scheduler {
   }
 
   rescheduleTask(request: RescheduleRequest, rule?: TaskRule | null) {
-    const wrapped = typeof request === 'object' && 'task' in request;
-    const task = this.requireTask(wrapped ? request.task : request);
-    task.reschedule(rule ?? (wrapped ? request.rule : undefined) ?? task.rule);
+    const args = unpackSchedule(request, rule);
+    const task = this.requireTask(args.task);
+    task.reschedule(args.rule ?? task.rule);
     this.getTask(`${task.name}-helper`)?.start();
   }
 }

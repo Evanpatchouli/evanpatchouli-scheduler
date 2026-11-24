@@ -5,6 +5,13 @@ export type TaskRule = Parameters<typeof scheduleJob>[0];
 export type TaskRef = string | Task;
 export type RescheduleRequest = TaskRef | { task: TaskRef; rule?: TaskRule | null };
 
+export function unpackSchedule(request: RescheduleRequest, rule?: TaskRule | null) {
+  if (typeof request === 'object' && 'task' in request) {
+    return { task: request.task, rule: rule ?? request.rule };
+  }
+  return { task: request, rule };
+}
+
 class Task {
   private hasScheduled = false;
   private readonly executions = new Set<Promise<unknown>>();
