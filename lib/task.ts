@@ -1,8 +1,10 @@
-import {Job,RecurrenceRule,scheduleJob} from 'node-schedule';
+import {Job,RecurrenceRule} from 'node-schedule';
 import { TaskOption } from './task.option';
 
 class Task {
-  public alive: boolean = false;
+  get alive(): boolean {
+    return this.job.nextInvocation() != null;
+  }
   public cacheOn: boolean = false;
   public logOn: boolean = true;
   public job: Job;
@@ -22,7 +24,13 @@ class Task {
     public todo: Function,
     public options: TaskOption ={logOn:true,cacheOn:false}
   ){
-    this.job = new Job(name);
+    this.job = new Job(async () => {
+      if (this.cacheOn) {
+        this.count.push({name: this.name, time: new Date().toLocaleString()});
+      }
+      if (this.logOn) console.log(`[Scheduler][Task:${this.name}]Task is going...`);
+      return this.todo();
+    });
     this.initEvent(this);
   }
 
@@ -30,20 +38,10 @@ class Task {
    * Start this task schedule
    */
   start(){
-    console.log(`[Scheduler][Task:${this.name}]Schedule starts`);
-    this.job = scheduleJob(this.name,this.rule,
-    //2.在执行这里的回调
-    async ()=>{
-      if (this.cacheOn){
-        this.count.push({name: this.job.name, time: new Date().toLocaleString()});
-      }
-      if (this.logOn){
-        console.log(`[Scheduler][Task:${this.name}]Task is going...`);
-      }
-      const result = await this.todo();
-      return result; //将被监听success的回调函数捕捉
-    });
-    this.initEvent(this);
+    if (!this.alive && !this.job.schedule(this.rule as Date | string | number)) {
+      this.job.cancel();
+      throw new Error(`[Scheduler]Cannot schedule task "${this.name}"`);
+    }
   }
 
   /**
@@ -90,7 +88,6 @@ class Task {
   private initEvent(task: Task){
     //1.先执行 scheduled 回调
     task.job.on("scheduled",()=>{
-        task.alive = true;
         if (task.logOn){
             console.log(`[Scheduler][Task:${task.name}]Task is scheduled as ${JSON.stringify(task.rule)}`);
         }
@@ -105,7 +102,7 @@ class Task {
     //4.再执行 success 回调
     task.job.on("success",(data)=>{
         if (task.cacheOn){
-            task.success.push({name: task.job.name, time: new Date().toLocaleString(), result: data});
+            task.success.push({name: task.name, time: new Date().toLocaleString(), result: data});
         }
         
         if (task.logOn){
@@ -118,14 +115,13 @@ class Task {
     //5.只监听任务创建回调,run回调和success回调中产生的异常
     task.job.on("error",(err)=>{
         if (task.cacheOn){
-            task.fail.push({name: task.job.name, time: new Date().toLocaleString(), errMsg: err.message });
+            task.fail.push({name: task.name, time: new Date().toLocaleString(), errMsg: err.message });
         }
         console.log(`[ERROR][Task:${task.name}][${new Date().toLocaleString()}]${err.message}`);
         console.log(`[Scheduler][Task:${task.name}]${task.toString()}`,"\n");
     });
     //6.计划被取消的那一刻执行 canceled
     task.job.on("canceled",()=>{
-        task.alive = false;
         console.log(`[Scheduler][Task:${task.name}]Schedule has been canceld`);
     });
   }

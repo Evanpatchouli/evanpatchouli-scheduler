@@ -174,9 +174,7 @@ class Scheduler {
           throw new Error(`[Scheduler]Task ${task} to removed does not exist`);
       }
     }
-    if (taskRef.alive) {
-      this.stopTask(taskRef);
-    }
+    this.stopTask(taskRef);
     this.task_pool.delete(taskRef.name);
     this.task_pool.delete(`${taskRef.name}-helper`);
   }
@@ -216,6 +214,7 @@ class Scheduler {
       }
     }
     taskRef.restart();
+    this.getTask(`${taskRef.name}-helper`)?.start();
   }
   /**
    * Restart a series of tasks
