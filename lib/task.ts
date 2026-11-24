@@ -22,6 +22,7 @@ function errorMessage(reason: unknown): string {
 }
 
 type HistoryEntry = { name: string; time: string };
+const skipped = Symbol('skipped execution');
 
 export default class Task {
   private hasScheduled = false;
@@ -74,6 +75,7 @@ export default class Task {
 
   private createJob() {
     const job = new Job(async () => {
+      if (this.options.overlap === 'skip' && this.runningCount > 0) return skipped;
       if (this.cacheOn) this.record(this.count, this.entry());
       const execution = Promise.resolve().then(() => this.todo());
       this.executions.add(execution);
@@ -84,6 +86,7 @@ export default class Task {
       }
     });
     job.on('success', result => {
+      if (result === skipped) return;
       if (this.cacheOn) this.record(this.success, { ...this.entry(), result });
       if (this.logOn) console.log(`[Scheduler][Task:${this.name}]Completed`, result);
     });

@@ -1,6 +1,7 @@
 const { test, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { Scheduler, Task } = require('..');
+require('./regression/overlap');
 require('./regression/cache');
 require('./regression/outcomes');
 require('./regression/plans');
