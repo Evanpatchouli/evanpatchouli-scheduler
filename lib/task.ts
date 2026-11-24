@@ -103,24 +103,38 @@ export default class Task {
   }
 
   reschedule(rule: TaskRule) {
-    const candidate = this.hasScheduled ? this.createJob() : this.job;
+    Task.scheduleTogether([{ task: this, rule }]);
+  }
+
+  /** @internal All candidates are prepared synchronously before any live schedule is replaced. */
+  static scheduleTogether(changes: ReadonlyArray<{ task: Task; rule: TaskRule }>) {
+    const candidates: { task: Task; rule: TaskRule; job: Job }[] = [];
     try {
-      const invalid = rule == null || (typeof rule === 'string' && !rule.trim()) ||
-        (rule instanceof Date && !Number.isFinite(rule.getTime())) ||
-        (typeof rule === 'number' && !Number.isFinite(rule));
-      // @types/node-schedule narrows Job.schedule compared with scheduleJob.
-      if (invalid || !candidate.schedule(rule as Date | string | number)) {
-        throw new Error(`[Scheduler]Cannot schedule task "${this.name}"`);
+      for (const { task, rule } of changes) {
+        const job = task.hasScheduled || changes.length > 1 ? task.createJob() : task.job;
+        candidates.push({ task, rule, job });
+        const invalid = rule == null || (typeof rule === 'string' && !rule.trim()) ||
+          (rule instanceof Date && !Number.isFinite(rule.getTime())) ||
+          (typeof rule === 'number' && !Number.isFinite(rule));
+        // @types/node-schedule narrows Job.schedule compared with scheduleJob.
+        if (invalid || !job.schedule(rule as Date | string | number)) {
+          throw new Error(`[Scheduler]Cannot schedule task "${task.name}"`);
+        }
       }
     } catch (error) {
-      candidate.cancel();
+      for (const { task, job } of candidates) {
+        job.cancel();
+        if (job === task.job) task.job = task.createJob();
+      }
       throw error;
     }
-    const previous = this.job;
-    this.job = candidate;
-    this.rule = rule;
-    this.hasScheduled = true;
-    if (previous !== candidate) previous.cancel();
+    for (const { task, rule, job } of candidates) {
+      const previous = task.job;
+      task.job = job;
+      task.rule = rule;
+      task.hasScheduled = true;
+      if (previous !== job) previous.cancel();
+    }
   }
 
   restart() { this.reschedule(this.rule); }

@@ -66,7 +66,7 @@ export class Scheduler {
       }
       if (start) this.startTasks(tasks);
     } catch (error) {
-      for (const task of added) this.removeTask(task);
+      for (const task of added) this.task_pool.delete(task.name);
       throw error;
     }
   }
@@ -78,23 +78,21 @@ export class Scheduler {
   }
 
   startTask(ref: TaskRef) {
-    const task = this.requireTask(ref);
-    task.start();
-    this.getTask(`${task.name}-helper`)?.start();
+    this.startTasks([ref]);
   }
 
   startTasks(refs: readonly TaskRef[]) {
-    const tasks = this.resolveTasks(refs);
-    const started: Task[] = [];
-    try {
-      for (const task of tasks) {
-        if (!task.alive) started.push(task);
-        this.startTask(task);
-      }
-    } catch (error) {
-      for (const task of started) this.stopTask(task);
-      throw error;
+    this.scheduleBatch(refs, false);
+  }
+
+  private scheduleBatch(refs: readonly TaskRef[], restart: boolean) {
+    const changes = new Set<Task>();
+    for (const task of this.resolveTasks(refs)) {
+      if (restart || !task.alive) changes.add(task);
+      const helper = this.getTask(`${task.name}-helper`);
+      if (helper && !helper.alive) changes.add(helper);
     }
+    Task.scheduleTogether([...changes].map(task => ({ task, rule: task.rule })));
   }
 
   startAll() {
@@ -148,13 +146,11 @@ export class Scheduler {
   }
 
   restartTask(ref: TaskRef) {
-    const task = this.requireTask(ref);
-    task.restart();
-    this.getTask(`${task.name}-helper`)?.start();
+    this.restartTasks([ref]);
   }
 
   restartTasks(refs: readonly TaskRef[]) {
-    for (const task of this.resolveTasks(refs)) this.restartTask(task);
+    this.scheduleBatch(refs, true);
   }
 
   rescheduleTask(request: RescheduleRequest, rule?: TaskRule | null) {

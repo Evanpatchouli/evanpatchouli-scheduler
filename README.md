@@ -268,8 +268,7 @@ const task2 = new Task("HelloTask2", "* * * * * *", ()=>{
 })
 scheduler.addTasks([task1,task2]);
 ```
-You can also give the second param as true to make all of them to start at once.  
-In future, this method may support to appoint every task whether to start or not.
+Pass `true` to register and start the batch. A name conflict or scheduling failure rolls back the new registrations. Batch start and restart prepare the whole batch before replacing existing schedules.
 
 ### getTask
 
