@@ -1,5 +1,4 @@
 import Task from "./task";
-import Scheduler from "./scheduler";
 import { TaskOption } from "./task.option";
 
 class TaskHelper extends Task{
@@ -10,8 +9,8 @@ class TaskHelper extends Task{
    */
   constructor(task: Task, options?: TaskOption) {
     super(`${task.name}-helper`,"0 */15 * * * *",()=>{
-      Scheduler.task_pool.get(task.name)?.releaseCache();
-      Scheduler.task_pool.get(`${task.name}-helper`)?.releaseCache();
+      task.releaseCache();
+      this.releaseCache();
       return "Cache has been released"; //将被监听success的回调函数捕捉
     },options??{logOn:task.logOn, cacheOn: task.cacheOn});
   }

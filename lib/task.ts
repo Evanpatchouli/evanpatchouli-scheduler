@@ -1,5 +1,6 @@
 import { Job, scheduleJob } from 'node-schedule';
 import { TaskOption } from './task.option';
+import { forgetCache, scheduleCacheRelease } from './task.cache';
 
 export type TaskRule = Parameters<typeof scheduleJob>[0];
 export type TaskRef = string | Task;
@@ -27,6 +28,7 @@ export default class Task {
   private readonly executions = new Set<Promise<unknown>>();
   cacheOn: boolean;
   logOn: boolean;
+  readonly historyLimit: number;
   job: Job;
   success: (HistoryEntry & { result: any })[] = [];
   fail: (HistoryEntry & { errMsg: string })[] = [];
@@ -40,6 +42,10 @@ export default class Task {
   ) {
     this.logOn = options.logOn ?? true;
     this.cacheOn = options.cacheOn ?? false;
+    this.historyLimit = options.historyLimit ?? 1000;
+    if (!Number.isSafeInteger(this.historyLimit) || this.historyLimit < 0) {
+      throw new RangeError('historyLimit must be a non-negative safe integer');
+    }
     this.job = this.createJob();
   }
 
@@ -59,9 +65,16 @@ export default class Task {
     return { name: this.name, time: new Date().toLocaleString() };
   }
 
+  private record<T>(history: T[], entry: T) {
+    if (this.historyLimit === 0) return;
+    if (history.length >= this.historyLimit) history.splice(0, history.length - this.historyLimit + 1);
+    history.push(entry);
+    scheduleCacheRelease(this);
+  }
+
   private createJob() {
     const job = new Job(async () => {
-      if (this.cacheOn) this.count.push(this.entry());
+      if (this.cacheOn) this.record(this.count, this.entry());
       const execution = Promise.resolve().then(() => this.todo());
       this.executions.add(execution);
       try {
@@ -71,12 +84,12 @@ export default class Task {
       }
     });
     job.on('success', result => {
-      if (this.cacheOn) this.success.push({ ...this.entry(), result });
+      if (this.cacheOn) this.record(this.success, { ...this.entry(), result });
       if (this.logOn) console.log(`[Scheduler][Task:${this.name}]Completed`, result);
     });
     job.on('error', (reason: unknown) => {
       const errMsg = errorMessage(reason);
-      if (this.cacheOn) this.fail.push({ ...this.entry(), errMsg });
+      if (this.cacheOn) this.record(this.fail, { ...this.entry(), errMsg });
       if (this.logOn) console.error(`[Scheduler][Task:${this.name}]Failed`, errMsg);
     });
     return job;
@@ -111,6 +124,7 @@ export default class Task {
   stop() { this.job.cancel(); }
 
   releaseCache() {
+    forgetCache(this);
     this.count = [];
     this.success = [];
     this.fail = [];

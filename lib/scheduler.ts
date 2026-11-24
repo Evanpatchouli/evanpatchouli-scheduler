@@ -1,6 +1,7 @@
 import Plan from './plan';
 import Task, { RescheduleRequest, TaskRef, TaskRule, unpackSchedule } from './task';
 import TaskHelper from './task.helper';
+import { forgetCache } from './task.cache';
 
 export class Scheduler {
   private static readonly instance = new Scheduler();
@@ -54,7 +55,6 @@ export class Scheduler {
       for (const task of tasks) {
         this.task_pool.set(task.name, task);
         added.push(task);
-        this.registerHelper(task);
       }
       if (start) this.startTasks(tasks);
     } catch (error) {
@@ -64,6 +64,7 @@ export class Scheduler {
   }
 
   registerHelper(task: Task) {
+    this.requireTask(task);
     const name = `${task.name}-helper`;
     if (!this.task_pool.has(name)) this.task_pool.set(name, new TaskHelper(task));
   }
@@ -117,6 +118,7 @@ export class Scheduler {
     for (const plan of this.plan_pool.values()) plan.task_group.delete(task.name);
     for (const owned of [task, this.getTask(`${task.name}-helper`)]) {
       if (!owned) continue;
+      forgetCache(owned);
       this.task_pool.delete(owned.name);
       if (owned.runningCount) {
         const completion = owned.waitForIdle();
