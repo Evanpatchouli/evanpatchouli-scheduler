@@ -1,4 +1,3 @@
-import {gracefulShutdown} from 'node-schedule';
 import Plan from './plan';
 import Task, { RescheduleRequest, TaskRule } from './task';
 import TaskHelper from './task.helper';
@@ -8,7 +7,8 @@ import ScheTool from './sche.tool';
 /**
  * 
  */
-class Scheduler {
+export class Scheduler {
+  private readonly draining = new Set<Promise<void>>();
   name: string;
   static instance: Scheduler|null = null;
   task_pool: Map<string,Task>;
@@ -82,10 +82,13 @@ class Scheduler {
   /**
    * Stop all tasks
    */
-  stopAll() {
-    console.log("[Scheduler]Going to shutdown all tasks...");
-    gracefulShutdown();
-    console.log("[Scheduler]All tasks have been shutdown gracefully");
+  async stopAll(): Promise<void> {
+    const pending = [...this.draining];
+    for (const task of this.task_pool.values()) {
+      task.stop();
+      if (task.runningCount) pending.push(task.waitForIdle());
+    }
+    await Promise.all(pending);
   }
 
   /**
@@ -179,6 +182,13 @@ class Scheduler {
       }
     }
     this.stopTask(taskRef);
+    for (const owned of [taskRef, this.getTask(`${taskRef.name}-helper`)]) {
+      if (owned?.runningCount) {
+        const completion = owned.waitForIdle();
+        this.draining.add(completion);
+        void completion.then(() => this.draining.delete(completion));
+      }
+    }
     this.task_pool.delete(taskRef.name);
     this.task_pool.delete(`${taskRef.name}-helper`);
   }

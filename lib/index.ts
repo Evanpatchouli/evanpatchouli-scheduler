@@ -8,7 +8,7 @@ export const Plan = _Plan;
 import _PlanTool from "./plan.tool";
 export const PlanTool = _PlanTool;
 import _Scheduler from "./scheduler";
-export const Scheduler = _Scheduler;
+export const Scheduler: typeof _Scheduler = _Scheduler;
 import _ScheTool from "./sche.tool";
 export const ScheTool = _ScheTool;
 import _Starter from './starter';

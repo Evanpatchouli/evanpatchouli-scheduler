@@ -7,6 +7,15 @@ export type RescheduleRequest = TaskRef | { task: TaskRef; rule?: TaskRule | nul
 
 class Task {
   private hasScheduled = false;
+  private readonly executions = new Set<Promise<unknown>>();
+
+  get runningCount() {
+    return this.executions.size;
+  }
+
+  async waitForIdle(): Promise<void> {
+    await Promise.allSettled(this.executions);
+  }
   get alive(): boolean {
     return this.job.nextInvocation() != null;
   }
@@ -38,7 +47,13 @@ class Task {
         this.count.push({name: this.name, time: new Date().toLocaleString()});
       }
       if (this.logOn) console.log(`[Scheduler][Task:${this.name}]Task is going...`);
-      return this.todo();
+      const execution = Promise.resolve().then(() => this.todo());
+      this.executions.add(execution);
+      try {
+        return await execution;
+      } finally {
+        this.executions.delete(execution);
+      }
     });
     this.initEvent(job);
     return job;
