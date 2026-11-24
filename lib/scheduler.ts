@@ -1,6 +1,6 @@
-import {gracefulShutdown,RecurrenceRule} from 'node-schedule';
+import {gracefulShutdown} from 'node-schedule';
 import Plan from './plan';
-import Task from './task';
+import Task, { RescheduleRequest, TaskRule } from './task';
 import TaskHelper from './task.helper';
 import PlanTool from './plan.tool';
 import ScheTool from './sche.tool';
@@ -97,8 +97,12 @@ class Scheduler {
     this.task_pool.set(task.name, task);
     this.registerHelper(task);
     if (isToStart == true) {
-      this.task_pool.get(task.name)?.start();
-      this.task_pool.get(`${task.name}-helper`)?.start();
+      try {
+        this.startTask(task);
+      } catch (error) {
+        this.removeTask(task);
+        throw error;
+      }
     }
   }
 
@@ -230,47 +234,12 @@ class Scheduler {
    * @param {{task:string,rule:string|RecurrenceRule|Date|number|{[x:string]:any}}|Task|string} task
    * @param {string|schedule.RecurrenceRule|Date|number|{[x:string]:any}} rule
    */
-  rescheduleTask(task: {task:string,rule?:string|RecurrenceRule|Date|number|{[x:string]:any}}|Task|string, rule?: string|RecurrenceRule|Date|number|{[x:string]:any}) {
-      class RescheArg1 {
-        task: string|Task = '';
-        rule?: string|RecurrenceRule|Date|number|{[x:string]:any}
-      }
-      let taskRef: Task|undefined;
-      let rescheRule;
-      let taskHelperRef:  Task|undefined;
-      const arg1: {task:string|Task,rule?:string|RecurrenceRule|Date|number|{[x:string]:any}}|Task|string = arguments[0];
-      if (arg1 instanceof RescheArg1) {
-        taskRef = this.getTask(arg1.task);
-        if (!arg1.rule) {
-          if (taskRef) {
-            rescheRule = taskRef.rule;
-          }
-        } else {
-          rescheRule = arg1.rule;
-        }
-      }
-      else if (arg1 instanceof Task) {
-        taskRef = this.getTask(arg1);
-        if (taskRef) {
-          rescheRule = taskRef.rule;
-        }
-        this.restartTask(`${arg1.name}-helper`);
-      }
-      else if (typeof arg1 == 'string') {
-        taskRef = this.getTask(arg1);
-      }
-      if (arguments.length == 2) {
-        rescheRule = rule;
-      }
-      if (!taskRef) {
-        throw new Error(`[Scheduler]Task ${task} to reschedule does not exist`)
-      }
-      if (!rescheRule) {
-        rescheRule = taskRef.rule;
-      }
-      taskHelperRef = this.getTask(`${taskRef.name}-helper`);
-      taskRef.reschedule(rescheRule);
-      taskHelperRef?.restart();
+  rescheduleTask(request: RescheduleRequest, rule?: TaskRule | null) {
+    const wrapped = typeof request === 'object' && 'task' in request;
+    const task = this.getTask(wrapped ? request.task : request);
+    if (!task) throw new Error('[Scheduler]Task to reschedule does not exist');
+    task.reschedule(rule ?? (wrapped ? request.rule : undefined) ?? task.rule);
+    this.getTask(`${task.name}-helper`)?.start();
   }
 }
 
